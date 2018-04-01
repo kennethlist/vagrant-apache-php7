@@ -7,10 +7,11 @@ XDEBUG_CONFIG_FILE="/etc/php/7.0/mods-available/xdebug.ini"
 MYSQL_CONFIG_FILE="/etc/mysql/my.cnf"
 DEFAULT_APACHE_INDEX="/var/www/html/index.html"
 PROJECT_WEB_ROOT="www"
-USER_HOME="/home/ubuntu"
+USER_HOME="/home/vagrant"
 DBHOST="localhost"
 DBUSER="root"
 DBPASSWD="vagrant"
+SERVERNAME='localhost'
 
 # This function is called at the very bottom of the file
 main() {
@@ -52,23 +53,24 @@ install_apache() {
   echo "Installing Apache..."
   apt-get -y install apache2
 
-  sed -i "s/^\(.*\)www-data/\1ubuntu/g" ${APACHE_CONFIG_FILE}
-  chown -R ubuntu:ubuntu /var/log/apache2
+  sed -i "s/^\(.*\)www-data/\1vagrant/g" ${APACHE_CONFIG_FILE}
+  chown -R vagrant:vagrant /var/log/apache2
+  chown -R vagrant:vagrant /var/www
 
-  sudo su - ubuntu /bin/bash -c "mkdir -p ${USER_HOME}/dev/${PROJECT_WEB_ROOT}"
+  # sudo su - vagrant /bin/bash -c "mkdir -p ${USER_HOME}/dev/${PROJECT_WEB_ROOT}"
 
   if [ ! -f "${APACHE_VHOST_FILE}" ]; then
     cat << EOF > ${APACHE_VHOST_FILE}
 <VirtualHost *:80>
-    ServerName www.localhost
+    ServerName ${SERVERNAME}
     ServerAdmin webmaster@localhost
-    DocumentRoot ${USER_HOME}/dev/${PROJECT_WEB_ROOT}
+    DocumentRoot /var/www
     LogLevel debug
 
     ErrorLog /var/log/apache2/error.log
     CustomLog /var/log/apache2/access.log combined
 
-    <Directory ${USER_HOME}/dev/${PROJECT_WEB_ROOT}>
+    <Directory /var/www
         AllowOverride All
         Require all granted
     </Directory>
@@ -139,11 +141,11 @@ install_mailhog() {
   echo "Installing MailHog..."
   apt-get -y install golang
 
-  sudo su - ubuntu /bin/bash -c "export GOPATH=\$HOME/go; export PATH=\$PATH:\$GOROOT/bin:\$GOPATH/bin; go get github.com/mailhog/mhsendmail"
+  sudo su - vagrant /bin/bash -c "export GOPATH=\$HOME/go; export PATH=\$PATH:\$GOROOT/bin:\$GOPATH/bin; go get github.com/mailhog/mhsendmail"
   echo "sendmail_path = ${USER_HOME}/go/bin/mhsendmail" >> ${PHP_CONFIG_FILE}
 
   # Download binary from github
-  sudo su - ubuntu -c "wget --quiet -O ~/mailhog https://github.com/mailhog/MailHog/releases/download/v0.1.8/MailHog_linux_amd64 && chmod +x ~/mailhog"
+  sudo su - vagrant -c "wget --quiet -O ~/mailhog https://github.com/mailhog/MailHog/releases/download/v0.1.8/MailHog_linux_amd64 && chmod +x ~/mailhog"
     
   # Make it start on reboot
   tee /etc/systemd/system/mailhog.service <<EOL
@@ -168,17 +170,17 @@ EOL
 install_nodejs() {
   curl -sL https://deb.nodesource.com/setup_8.x | bash
   apt-get install nodejs
-  sudo su - ubuntu /bin/bash -c "mkdir ~/.npm-global"
-  sudo su - ubuntu /bin/bash -c "npm config set prefix '~/.npm-global'"
-  sudo su - ubuntu /bin/bash -c "echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.profile"
-  sudo su - ubuntu /bin/bash -c "source ~/.profile"
-  sudo su - ubuntu /bin/bash -c "npm -g install yarn gulp"
+  sudo su - vagrant /bin/bash -c "mkdir ~/.npm-global"
+  sudo su - vagrant /bin/bash -c "npm config set prefix '~/.npm-global'"
+  sudo su - vagrant /bin/bash -c "echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.profile"
+  sudo su - vagrant /bin/bash -c "source ~/.profile"
+  sudo su - vagrant /bin/bash -c "npm -g install yarn gulp"
 }
 
 
 install_samba() {
   apt-get -y install samba
-  smbpasswd -an ubuntu
+  smbpasswd -an vagrant
 
   cat << EOF >> /etc/samba/smb.conf
 [dev]
@@ -188,8 +190,8 @@ install_samba() {
    browseable = yes
    create mask = 0600
    directory mask = 0700
-   force group = ubuntu
-   force user = ubuntu
+   force group = vagrant
+   force user = vagrant
    writable = yes
 EOF
 
@@ -203,7 +205,7 @@ install_docker() {
 	add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 	apt-get update
 	apt-get -y install docker-ce
-  usermod -aG docker ubuntu
+  usermod -aG docker vagrant
 }
 
 
