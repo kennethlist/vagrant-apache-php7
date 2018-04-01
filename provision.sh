@@ -70,7 +70,7 @@ install_apache() {
     ErrorLog /var/log/apache2/error.log
     CustomLog /var/log/apache2/access.log combined
 
-    <Directory /var/www
+    <Directory /var/www>
         AllowOverride All
         Require all granted
     </Directory>
